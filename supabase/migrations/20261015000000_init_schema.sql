@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 -- 2. FOLDERS
 CREATE TABLE IF NOT EXISTS public.folders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     name VARCHAR(120) NOT NULL,
     description TEXT,
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS public.folders (
 
 -- 3. STUDY SETS
 CREATE TABLE IF NOT EXISTS public.study_sets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     folder_id UUID REFERENCES public.folders(id) ON DELETE SET NULL,
     title VARCHAR(200) NOT NULL,
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS public.study_sets (
 
 -- 4. CARDS
 CREATE TABLE IF NOT EXISTS public.cards (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     set_id UUID NOT NULL REFERENCES public.study_sets(id) ON DELETE CASCADE,
     term VARCHAR(255) NOT NULL,
     ipa VARCHAR(100),
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS public.cards (
 
 -- 5. USER CARD PROGRESS (SRS)
 CREATE TABLE IF NOT EXISTS public.user_card_progress (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     card_id UUID NOT NULL REFERENCES public.cards(id) ON DELETE CASCADE,
     box_level INT DEFAULT 1 CHECK (box_level BETWEEN 1 AND 5),
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS public.user_card_progress (
 
 -- 6. STUDY LOGS
 CREATE TABLE IF NOT EXISTS public.study_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     card_id UUID NOT NULL REFERENCES public.cards(id) ON DELETE CASCADE,
     rating review_rating NOT NULL,
