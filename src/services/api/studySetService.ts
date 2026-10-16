@@ -189,12 +189,15 @@ export async function getStudySets(folderId?: string): Promise<StudySet[]> {
     return sets;
   }
 
-  let query = supabase.from('study_sets').select('*').order('created_at', { ascending: false });
+  let query = supabase.from('study_sets').select('*, cards(count)').order('created_at', { ascending: false });
   if (folderId) query = query.eq('folder_id', folderId);
 
   const { data, error } = await query;
   if (error) throw error;
-  return data as StudySet[];
+  return (data || []).map((item: any) => ({
+    ...item,
+    total_cards: item.cards?.[0]?.count ?? item.total_cards ?? 0,
+  })) as StudySet[];
 }
 
 export async function getStudySetById(setId: string): Promise<StudySet | null> {
@@ -203,9 +206,12 @@ export async function getStudySetById(setId: string): Promise<StudySet | null> {
     return sets.find((s) => s.id === setId) || null;
   }
 
-  const { data, error } = await supabase.from('study_sets').select('*').eq('id', setId).single();
-  if (error) return null;
-  return data as StudySet;
+  const { data, error } = await supabase.from('study_sets').select('*, cards(count)').eq('id', setId).single();
+  if (error || !data) return null;
+  return {
+    ...data,
+    total_cards: (data as any).cards?.[0]?.count ?? (data as any).total_cards ?? 0,
+  } as StudySet;
 }
 
 export async function createStudySet(params: {
@@ -413,3 +419,65 @@ export async function bulkInsertCards(setId: string, items: ParsedCardItem[]): P
   if (error) throw error;
   return data.length;
 }
+
+/**
+ * Xóa Folder an toàn: Chỉ xóa thư mục, bảo toàn nguyên vẹn các bộ thẻ con bên trong
+ * bằng cách cập nhật folder_id = null (chuyển ra danh sách bộ thẻ độc lập).
+ */
+export async function deleteFolder(folderId: string): Promise<void> {
+  if (!isSupabaseConfigured) {
+    // 1. Chuyển các bộ thẻ trong folder về độc lập (folder_id = null)
+    const sets = getLocal<StudySet[]>('sets', INITIAL_SETS);
+    const updatedSets = sets.map((s) =>
+      s.folder_id === folderId ? { ...s, folder_id: null, updated_at: new Date().toISOString() } : s
+    );
+    setLocal('sets', updatedSets);
+
+    // 2. Xóa folder khỏi danh sách
+    const folders = getLocal<Folder[]>('folders', INITIAL_FOLDERS).filter((f) => f.id !== folderId);
+    setLocal('folders', folders);
+    return;
+  }
+
+  // 1. Gỡ liên kết các bộ thẻ bên trong folder (folder_id = null)
+  const { error: detachError } = await supabase
+    .from('study_sets')
+    .update({ folder_id: null })
+    .eq('folder_id', folderId);
+
+  if (detachError) {
+    console.error('[deleteFolder] Error detaching study sets:', detachError);
+    throw detachError;
+  }
+
+  // 2. Xóa folder
+  const { error } = await supabase.from('folders').delete().eq('id', folderId);
+  if (error) {
+    console.error('[deleteFolder] Error deleting folder:', error);
+    throw error;
+  }
+}
+
+/**
+ * Xóa vĩnh viễn Bộ thẻ cùng toàn bộ danh sách thẻ con bên trong
+ */
+export async function deleteStudySet(setId: string): Promise<void> {
+  if (!isSupabaseConfigured) {
+    // 1. Xóa toàn bộ cards của bộ thẻ này
+    const cards = getLocal<Card[]>('cards', INITIAL_CARDS).filter((c) => c.set_id !== setId);
+    setLocal('cards', cards);
+
+    // 2. Xóa bộ thẻ
+    const sets = getLocal<StudySet[]>('sets', INITIAL_SETS).filter((s) => s.id !== setId);
+    setLocal('sets', sets);
+    return;
+  }
+
+  // Trong Supabase, Foreign Key ON DELETE CASCADE tự động dọn sạch cards và user_card_progress
+  const { error } = await supabase.from('study_sets').delete().eq('id', setId);
+  if (error) {
+    console.error('[deleteStudySet] Error deleting study set:', error);
+    throw error;
+  }
+}
+

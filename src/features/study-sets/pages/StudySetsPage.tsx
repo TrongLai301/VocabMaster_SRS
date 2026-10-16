@@ -5,6 +5,8 @@ import { Folder, StudySet } from '@/types/database.types';
 import { CreateFolderModal } from '@/features/study-sets/components/CreateFolderModal';
 import { CreateStudySetModal } from '@/features/study-sets/components/CreateStudySetModal';
 import { CreateSetFromTsvModal } from '@/features/study-sets/components/CreateSetFromTsvModal';
+import { DeleteFolderDialog } from '@/features/study-sets/components/DeleteFolderDialog';
+import { DeleteStudySetDialog } from '@/features/study-sets/components/DeleteStudySetDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +19,8 @@ import {
   Layers, 
   Sparkles,
   Filter,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Trash2
 } from 'lucide-react';
 
 export const StudySetsPage: React.FC = () => {
@@ -30,6 +33,8 @@ export const StudySetsPage: React.FC = () => {
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [isSetModalOpen, setIsSetModalOpen] = useState(false);
   const [isTsvModalOpen, setIsTsvModalOpen] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState<Folder | null>(null);
+  const [setToDelete, setSetToDelete] = useState<StudySet | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -157,9 +162,22 @@ export const StudySetsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <Badge variant={isSelected ? 'default' : 'secondary'} className="text-xs font-mono ml-2 shrink-0">
-                  {count} bộ
-                </Badge>
+                <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                  <Badge variant={isSelected ? 'default' : 'secondary'} className="text-xs font-mono">
+                    {count} bộ
+                  </Badge>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFolderToDelete(folder);
+                    }}
+                    className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                    title="Xóa thư mục (bảo toàn bộ thẻ)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -222,9 +240,23 @@ export const StudySetsPage: React.FC = () => {
                           </Badge>
                         )}
 
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {set.total_cards} từ
-                        </Badge>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {set.total_cards} từ
+                          </Badge>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setSetToDelete(set);
+                            }}
+                            className="p-1 rounded-lg text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                            title="Xóa bộ thẻ"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                       <h3 className="text-lg font-bold tracking-tight text-foreground group-hover:text-primary transition-colors line-clamp-1">
@@ -281,6 +313,32 @@ export const StudySetsPage: React.FC = () => {
         folders={folders}
         initialFolderId={selectedFolderId || undefined}
         onSuccess={handleSetCreated}
+      />
+
+      {/* Delete Folder Dialog (Safe Detach) */}
+      <DeleteFolderDialog
+        folder={folderToDelete}
+        isOpen={!!folderToDelete}
+        onClose={() => setFolderToDelete(null)}
+        onDeleted={(deletedFolderId) => {
+          setFolders((prev) => prev.filter((f) => f.id !== deletedFolderId));
+          setSets((prev) =>
+            prev.map((s) => (s.folder_id === deletedFolderId ? { ...s, folder_id: null } : s))
+          );
+          if (selectedFolderId === deletedFolderId) {
+            setSelectedFolderId(null);
+          }
+        }}
+      />
+
+      {/* Delete Study Set Dialog (Cascade Clean) */}
+      <DeleteStudySetDialog
+        studySet={setToDelete}
+        isOpen={!!setToDelete}
+        onClose={() => setSetToDelete(null)}
+        onDeleted={(deletedSetId) => {
+          setSets((prev) => prev.filter((s) => s.id !== deletedSetId));
+        }}
       />
     </div>
   );

@@ -53,7 +53,7 @@ function saveLocalLogs(list: StudyLog[]) {
 export async function fetchDueCards(userId?: string): Promise<DueCardItem[]> {
   const currentUserId = userId || (await supabase.auth.getUser()).data.user?.id || 'local-user';
 
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && currentUserId !== 'local-user') {
     try {
       const now = new Date().toISOString();
       const { data, error } = await supabase
@@ -112,7 +112,7 @@ export async function fetchDueCards(userId?: string): Promise<DueCardItem[]> {
 export async function fetchNewUnreviewedCards(userId?: string, limit = 20): Promise<Card[]> {
   const currentUserId = userId || (await supabase.auth.getUser()).data.user?.id || 'local-user';
 
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && currentUserId !== 'local-user') {
     try {
       // 1. Lấy tất cả card_id đã có tiến trình
       const { data: progressData } = await supabase
@@ -156,7 +156,7 @@ export async function fetchMemoryStageStats(userId?: string): Promise<MemoryStag
   const currentUserId = userId || (await supabase.auth.getUser()).data.user?.id || 'local-user';
   let progressList: UserCardProgress[] = [];
 
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && currentUserId !== 'local-user') {
     try {
       const { data, error } = await supabase
         .from('user_card_progress')
@@ -227,7 +227,7 @@ export async function submitCardReview(
 
   let existingProgressRecord: UserCardProgress | null = null;
 
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && currentUserId !== 'local-user') {
     try {
       const { data } = await supabase
         .from('user_card_progress')
@@ -269,7 +269,7 @@ export async function submitCardReview(
   const nowIso = new Date().toISOString();
 
   // 3. Cập nhật vào Supabase
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && currentUserId !== 'local-user') {
     try {
       const { error: upsertErr } = await supabase.from('user_card_progress').upsert({
         user_id: currentUserId,

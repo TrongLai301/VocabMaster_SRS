@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getStudySetById, getCardsBySetId, deleteCard } from '@/services/api/studySetService';
 import { StudySet, Card as CardType } from '@/types/database.types';
 import { CardFlatListTable } from '@/features/study-sets/components/CardFlatListTable';
 import { ImportTsvModal } from '@/features/study-sets/components/ImportTsvModal';
 import { AddCardModal } from '@/features/study-sets/components/AddCardModal';
 import { EditCardModal } from '@/features/study-sets/components/EditCardModal';
+import { DeleteStudySetDialog } from '@/features/study-sets/components/DeleteStudySetDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,12 +22,14 @@ import {
   HelpCircle,
   Zap,
   Pencil,
-  Trash2
+  Trash2,
+  Headphones
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const StudySetDetailPage: React.FC = () => {
   const { setId } = useParams<{ setId: string }>();
+  const navigate = useNavigate();
   const [studySet, setStudySet] = useState<StudySet | null>(null);
   const [cards, setCards] = useState<CardType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +37,7 @@ export const StudySetDetailPage: React.FC = () => {
   // Modals state
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isAddCardOpen, setIsAddCardOpen] = useState(false);
+  const [isDeleteSetOpen, setIsDeleteSetOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CardType | null>(null);
   const [viewMode, setViewMode] = useState<'flat' | 'grid'>('flat');
 
@@ -124,11 +128,20 @@ export const StudySetDetailPage: React.FC = () => {
           <Button
             size="sm"
             variant="outline"
+            className="gap-1.5 rounded-lg text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+            onClick={() => setIsDeleteSetOpen(true)}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Xóa bộ thẻ</span>
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
             className="gap-1.5 rounded-lg text-xs"
             onClick={() => setIsImportOpen(true)}
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-primary" />
-            <span>Nhập TSV (Bulk Import)</span>
+            <span>Nhập TSV</span>
           </Button>
           <Button
             size="sm"
@@ -188,6 +201,12 @@ export const StudySetDetailPage: React.FC = () => {
               <Button variant="outline" className="rounded-xl gap-2 font-semibold px-4 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50">
                 <Zap className="w-4 h-4 text-amber-500" />
                 <span>Ghép từ (Match)</span>
+              </Button>
+            </Link>
+            <Link to={`/games?setId=${studySet.id}&mode=dictation`}>
+              <Button variant="outline" className="rounded-xl gap-2 font-semibold px-4 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50">
+                <Headphones className="w-4 h-4 text-emerald-500" />
+                <span>Nghe & Viết</span>
               </Button>
             </Link>
           </div>
@@ -304,6 +323,16 @@ export const StudySetDetailPage: React.FC = () => {
         open={!!editingCard}
         onOpenChange={(open) => !open && setEditingCard(null)}
         onSuccess={handleEditCardSuccess}
+      />
+
+      {/* Delete Study Set Dialog */}
+      <DeleteStudySetDialog
+        studySet={studySet}
+        isOpen={isDeleteSetOpen}
+        onClose={() => setIsDeleteSetOpen(false)}
+        onDeleted={() => {
+          navigate('/sets');
+        }}
       />
     </div>
   );

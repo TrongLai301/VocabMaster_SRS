@@ -11,6 +11,7 @@
 4. [PHASE 4: Thuật toán Spaced Repetition (SRS SM-2) & Hàng đợi Ôn tập Hàng ngày](#-phase-4-thuật-toán-spaced-repetition-srs-sm-2--hàng-đợi-ôn-tập-hàng-ngày)
 5. [PHASE 5: Gamification, Trắc nghiệm Quiz, Ghép từ & Heatmap Chuyên cần](#-phase-5-gamification-trắc-nghiệm-quiz-ghép-từ--heatmap-chuyên-cần)
 6. [PHASE 6: Tối ưu hóa Hiệu năng, Responsive Mobile & Triển khai Production](#-phase-6-tối-ưu-hóa-hiệu-năng-responsive-mobile--triển-khai-production)
+7. [PHASE 7: Quản lý Thư mục/Bộ thẻ Nâng cao & Chế độ Nghe - Viết Từ Vựng (Dictation Mode)](#-phase-7-quản-lý-thư-mụcbộ-thẻ-nâng-cao--chế-độ-nghe---viết-từ-vựng-dictation-mode)
 
 ---
 
@@ -466,3 +467,29 @@ export function calculateNextSRS(current: CardProgressInput, rating: ReviewRatin
 - Sản phẩm chạy trực tiếp trên domain Vercel / Cloudflare Pages.
 - F5 tại bất kỳ trang con nào không bị lỗi 404.
 - Trải nghiệm mượt mà, đầy đủ tính năng trên cả iOS Safari, Android Chrome và Desktop.
+
+---
+
+## 🟢 PHASE 7: QUẢN LÝ THƯ MỤC/BỘ THẺ NÂNG CAO & CHẾ ĐỘ NGHE - VIẾT TỪ VỰNG (DICTATION MODE)
+> **Thời gian dự kiến**: 2 - 3 ngày  
+> **Mục tiêu**: Bổ sung tính năng xóa Folder an toàn (giữ nguyên toàn bộ bộ thẻ con), xóa bộ thẻ kèm cảnh báo phá hủy dữ liệu (destructive alert), và phát triển chế độ luyện tập Nghe - Viết chính tả (Dictation Mode) tích hợp Web Speech TTS, so sánh diff ký tự và câu ví dụ cloze.
+
+### 1. Checklist công việc cụ thể
+- [ ] **7.1. Xóa Thư Mục An Toàn (Folder Safe Deletion)**:
+  - Viết `deleteFolder(folderId)` trong `studySetService.ts`.
+  - Thiết lập DB Foreign Key `ON DELETE SET NULL` & LocalStorage fallback gán `folder_id = null`.
+  - Tạo `DeleteFolderDialog.tsx` nhấn mạnh thông điệp bảo toàn các bộ thẻ bên trong.
+  - Tích hợp Dropdown Menu trên thẻ Folder trong `StudySetsPage.tsx`.
+- [ ] **7.2. Xóa Bộ Thẻ Triệt Để (Study Set Deletion)**:
+  - Viết `deleteStudySet(setId)` trong `studySetService.ts` kích hoạt cascade xóa thẻ con và tiến trình SRS.
+  - Tạo `DeleteStudySetDialog.tsx` cảnh báo màu đỏ với số lượng thẻ bị xóa.
+  - Tích hợp nút xóa vào `StudySetsPage.tsx` và `StudySetDetailPage.tsx`.
+- [ ] **7.3. Chế Độ Nghe - Viết Từ Vựng (Dictation Mode)**:
+  - Xây dựng engine so khớp ký tự `evaluateDictation` và tạo câu ví dụ che từ `createClozeExample` trong `dictationEngine.ts`.
+  - Tích hợp Web Speech API tự động phát âm chuẩn giọng Anh/Mỹ, phím tắt `Ctrl + Space` để nghe lại, chỉnh tốc độ 0.75x/1.0x.
+  - Xây dựng component `DictationGame.tsx` với ô input lớn, phản hồi visual diff từng ký tự đúng/sai, gợi ý chữ cái đầu và số lượng ký tự.
+  - Màn hình tổng kết: Tỷ lệ chính xác %, danh sách từ đạt/chưa đạt, nút luyện lại các từ sai.
+  - Bổ sung router `mode=dictation` trong `GamesPage.tsx` và nút bấm truy cập nhanh trong `StudySetDetailPage.tsx`.
+
+*Chi tiết đặc tả mã nguồn đầy đủ xem tại: [phase.md](file:///Users/tronglq/Study/vocab/phase.md) hoặc [plans/phase-7.md](file:///Users/tronglq/Study/vocab/plans/phase-7.md)*
+

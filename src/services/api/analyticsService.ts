@@ -19,7 +19,7 @@ export async function fetchStudyHeatmapData(userId?: string): Promise<DailyActiv
   const currentUserId = userId || (await supabase.auth.getUser()).data.user?.id || 'local-user';
   const activityMap: DailyActivityMap = {};
 
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && currentUserId !== 'local-user') {
     try {
       const sinceDate = new Date();
       sinceDate.setDate(sinceDate.getDate() - 180);
