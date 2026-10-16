@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getStudySetById, getCardsBySetId, deleteCard } from '@/services/api/studySetService';
-import { StudySet, Card as CardType } from '@/types/database.types';
+import { getStudySetById, getCardsBySetId, deleteCard, getFolders } from '@/services/api/studySetService';
+import { StudySet, Card as CardType, Folder as FolderType } from '@/types/database.types';
 import { CardFlatListTable } from '@/features/study-sets/components/CardFlatListTable';
 import { ImportTsvModal } from '@/features/study-sets/components/ImportTsvModal';
 import { AddCardModal } from '@/features/study-sets/components/AddCardModal';
 import { EditCardModal } from '@/features/study-sets/components/EditCardModal';
 import { DeleteStudySetDialog } from '@/features/study-sets/components/DeleteStudySetDialog';
+import { MoveSetToFolderModal } from '@/features/study-sets/components/MoveSetToFolderModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,8 +16,8 @@ import {
   FileSpreadsheet, 
   Plus, 
   Layers, 
-  Sparkles, 
-  FolderKanban,
+  Folder,
+  FolderInput,
   Table as TableIcon,
   LayoutGrid,
   HelpCircle,
@@ -32,12 +33,14 @@ export const StudySetDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const [studySet, setStudySet] = useState<StudySet | null>(null);
   const [cards, setCards] = useState<CardType[]>([]);
+  const [folders, setFolders] = useState<FolderType[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modals state
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isAddCardOpen, setIsAddCardOpen] = useState(false);
   const [isDeleteSetOpen, setIsDeleteSetOpen] = useState(false);
+  const [isMoveFolderOpen, setIsMoveFolderOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CardType | null>(null);
   const [viewMode, setViewMode] = useState<'flat' | 'grid'>('flat');
 
@@ -45,12 +48,14 @@ export const StudySetDetailPage: React.FC = () => {
     if (!setId) return;
     setLoading(true);
     try {
-      const [setData, cardsData] = await Promise.all([
+      const [setData, cardsData, foldersData] = await Promise.all([
         getStudySetById(setId),
         getCardsBySetId(setId),
+        getFolders(),
       ]);
       setStudySet(setData);
       setCards(cardsData);
+      setFolders(foldersData);
     } catch (err) {
       console.error('Lỗi nạp dữ liệu bộ thẻ:', err);
     } finally {
@@ -68,6 +73,7 @@ export const StudySetDetailPage: React.FC = () => {
       await deleteCard(cardId, setId);
       setCards((prev) => prev.filter((c) => c.id !== cardId));
       toast.success('Đã xóa thẻ từ vựng');
+      loadData();
     } catch (err: any) {
       toast.error(`Lỗi xóa thẻ: ${err.message}`);
     }
@@ -79,6 +85,7 @@ export const StudySetDetailPage: React.FC = () => {
 
   const handleEditCardSuccess = (updatedCard: CardType) => {
     setCards((prev) => prev.map((c) => (c.id === updatedCard.id ? updatedCard : c)));
+    loadData();
   };
 
   const handleImportSuccess = (count: number) => {
@@ -88,6 +95,7 @@ export const StudySetDetailPage: React.FC = () => {
   const handleAddCardSuccess = (newCard: CardType) => {
     setCards((prev) => [...prev, newCard]);
     toast.success(`Đã thêm từ "${newCard.term}" vào bộ thẻ!`);
+    loadData();
   };
 
   if (loading) {
@@ -116,53 +124,82 @@ export const StudySetDetailPage: React.FC = () => {
     );
   }
 
+  const parentFolder = studySet.folder_id ? folders.find((f) => f.id === studySet.folder_id) : null;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 space-y-6">
       {/* Top Breadcrumb & Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <Link to="/sets" className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" />
           <span>Tất cả bộ thẻ</span>
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto justify-start sm:justify-end">
           <Button
             size="sm"
             variant="outline"
-            className="gap-1.5 rounded-lg text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
-            onClick={() => setIsDeleteSetOpen(true)}
+            className="gap-1.5 rounded-lg text-xs px-2.5 sm:px-3"
+            onClick={() => setIsMoveFolderOpen(true)}
+            title="Chuyển thư mục"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Xóa bộ thẻ</span>
+            <FolderInput className="w-3.5 h-3.5 text-primary" />
+            <span className="hidden sm:inline">Chuyển thư mục</span>
+            <span className="sm:hidden">Folder</span>
           </Button>
           <Button
             size="sm"
             variant="outline"
-            className="gap-1.5 rounded-lg text-xs"
+            className="gap-1.5 rounded-lg text-xs px-2.5 sm:px-3"
             onClick={() => setIsImportOpen(true)}
+            title="Nhập TSV"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-primary" />
-            <span>Nhập TSV</span>
+            <span className="hidden sm:inline">Nhập TSV</span>
+            <span className="sm:hidden">TSV</span>
           </Button>
           <Button
             size="sm"
-            className="gap-1.5 rounded-lg text-xs shadow-sm"
+            className="gap-1.5 rounded-lg text-xs shadow-sm px-2.5 sm:px-3"
             onClick={() => setIsAddCardOpen(true)}
+            title="Thêm từ mới"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Thêm từ mới</span>
+            <span>Thêm từ</span>
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 rounded-lg text-xs text-destructive border-destructive/30 hover:bg-destructive/10 px-2 sm:px-3"
+            onClick={() => setIsDeleteSetOpen(true)}
+            title="Xóa bộ thẻ"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Xóa</span>
           </Button>
         </div>
       </div>
 
       {/* Set Header Hero Card */}
-      <div className="rounded-3xl border bg-card p-6 sm:p-8 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="rounded-3xl border bg-card p-5 sm:p-8 shadow-sm space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-2 max-w-3xl">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="gap-1 text-xs">
-                <FolderKanban className="w-3 h-3 text-primary" />
+              <Badge variant="secondary" className="gap-1.5 text-xs font-semibold">
+                <Layers className="w-3.5 h-3.5 text-primary" />
                 <span>Bộ thẻ học</span>
               </Badge>
+
+              {parentFolder && (
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold text-white shadow-xs max-w-[200px] truncate"
+                  style={{ backgroundColor: parentFolder.color_code || '#3B82F6' }}
+                  title={parentFolder.name}
+                >
+                  <Folder className="w-3 h-3 fill-white/20 shrink-0" />
+                  <span className="truncate">{parentFolder.name}</span>
+                </span>
+              )}
+
               <Badge variant="outline" className="font-mono text-xs">
                 {cards.length} từ vựng
               </Badge>
@@ -173,38 +210,38 @@ export const StudySetDetailPage: React.FC = () => {
               ))}
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-sans">
+            <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-foreground font-sans break-words">
               {studySet.title}
             </h1>
 
             {studySet.description && (
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                 {studySet.description}
               </p>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
-            <Link to={`/study/${studySet.id}`}>
-              <Button className="rounded-xl shadow-md gap-2 font-bold px-4 sm:px-6">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto shrink-0">
+            <Link to={`/study/${studySet.id}`} className="col-span-2 sm:col-span-1">
+              <Button className="w-full rounded-xl shadow-md gap-2 font-bold px-4 sm:px-6">
                 <Layers className="w-4 h-4" />
                 <span>Học Flashcards (3D)</span>
               </Button>
             </Link>
             <Link to={`/games?setId=${studySet.id}&mode=quiz`}>
-              <Button variant="outline" className="rounded-xl gap-2 font-semibold px-4 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50">
+              <Button variant="outline" className="w-full rounded-xl gap-2 font-semibold px-3 sm:px-4 text-xs sm:text-sm border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50">
                 <HelpCircle className="w-4 h-4 text-indigo-500" />
-                <span>Trắc nghiệm (Quiz)</span>
+                <span>Trắc nghiệm</span>
               </Button>
             </Link>
             <Link to={`/games?setId=${studySet.id}&mode=match`}>
-              <Button variant="outline" className="rounded-xl gap-2 font-semibold px-4 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50">
+              <Button variant="outline" className="w-full rounded-xl gap-2 font-semibold px-3 sm:px-4 text-xs sm:text-sm border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50">
                 <Zap className="w-4 h-4 text-amber-500" />
-                <span>Ghép từ (Match)</span>
+                <span>Ghép từ</span>
               </Button>
             </Link>
-            <Link to={`/games?setId=${studySet.id}&mode=dictation`}>
-              <Button variant="outline" className="rounded-xl gap-2 font-semibold px-4 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50">
+            <Link to={`/games?setId=${studySet.id}&mode=dictation`} className="col-span-2 sm:col-span-1">
+              <Button variant="outline" className="w-full rounded-xl gap-2 font-semibold px-3 sm:px-4 text-xs sm:text-sm border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50">
                 <Headphones className="w-4 h-4 text-emerald-500" />
                 <span>Nghe & Viết</span>
               </Button>
@@ -323,6 +360,18 @@ export const StudySetDetailPage: React.FC = () => {
         open={!!editingCard}
         onOpenChange={(open) => !open && setEditingCard(null)}
         onSuccess={handleEditCardSuccess}
+      />
+
+      {/* Move Set To Folder Modal */}
+      <MoveSetToFolderModal
+        open={isMoveFolderOpen}
+        onOpenChange={setIsMoveFolderOpen}
+        studySet={studySet}
+        folders={folders}
+        onSuccess={() => {
+          setIsMoveFolderOpen(false);
+          loadData();
+        }}
       />
 
       {/* Delete Study Set Dialog */}

@@ -91,6 +91,15 @@ export const QuizGame: React.FC<QuizGameProps> = ({ cards, onFinish, onExit }) =
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
 
+      if (e.key === 'Control' || e.code === 'ControlLeft' || e.code === 'ControlRight') {
+        e.preventDefault();
+        if (e.repeat) return;
+        if (currentQuestion?.term) {
+          speak(currentQuestion.term);
+        }
+        return;
+      }
+
       if (!isAnswered && currentQuestion) {
         if (['Digit1', 'Numpad1'].includes(e.code) && currentQuestion.options[0]) {
           handleSelectOption(currentQuestion.options[0]);
@@ -109,7 +118,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ cards, onFinish, onExit }) =
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isAnswered, currentQuestion, handleSelectOption, handleNextQuestion]);
+  }, [isAnswered, currentQuestion, handleSelectOption, handleNextQuestion, speak]);
 
   const handleRestart = () => {
     setCurrentIndex(0);
@@ -235,15 +244,18 @@ export const QuizGame: React.FC<QuizGameProps> = ({ cards, onFinish, onExit }) =
           </Badge>
 
           <Button
-            size="icon"
+            size="sm"
             variant="ghost"
-            className={`h-8 w-8 rounded-full ${
-              isSpeaking ? 'text-primary bg-primary/10 animate-pulse' : 'text-muted-foreground'
+            className={`h-8 px-2 sm:px-2.5 rounded-full text-xs font-semibold gap-1 sm:gap-1.5 transition-all cursor-pointer ${
+              isSpeaking ? 'text-primary bg-primary/10 animate-pulse' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'
             }`}
             onClick={() => speak(currentQuestion.term)}
-            title="Phát âm từ vựng"
+            title="Phát âm từ vựng (Phím tắt: [Ctrl])"
           >
             <Volume2 className="w-4 h-4" />
+            <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-muted/80 text-muted-foreground border border-border/50 uppercase">
+              Ctrl
+            </span>
           </Button>
         </div>
 

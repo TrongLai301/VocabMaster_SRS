@@ -112,6 +112,26 @@ export const MatchGame: React.FC<MatchGameProps> = ({
     }
   }, [isCompleted, elapsedMs, bestTime, bestTimeKey, moves, onFinish]);
 
+  // Keyboard Shortcut: chỉ phím 'Ctrl' để nghe phát âm thẻ đang chọn
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+      if (e.key === 'Control' || e.code === 'ControlLeft' || e.code === 'ControlRight') {
+        e.preventDefault();
+        if (e.repeat) return;
+        if (selectedTileId) {
+          const selectedTile = tiles.find((t) => t.id === selectedTileId);
+          if (selectedTile) {
+            const card = cards.find((c) => c.id === selectedTile.cardId);
+            if (card) speak(card.term);
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTileId, tiles, cards, speak]);
+
   // Format thời gian MM:SS.s
   const formatTime = (ms: number) => {
     const totalSeconds = ms / 1000;
@@ -265,6 +285,10 @@ export const MatchGame: React.FC<MatchGameProps> = ({
 
           <span className="text-xs text-muted-foreground font-medium hidden sm:inline">
             Đã ghép: <strong>{matchedCardIds.size}</strong> / {totalPairs} cặp
+          </span>
+          <span className="text-[11px] text-muted-foreground/80 hidden md:inline-flex items-center gap-1 border-l pl-3">
+            <span>Nghe thẻ chọn:</span>
+            <kbd className="px-1.5 py-0.2 rounded bg-muted text-[10px] font-mono border text-foreground">Ctrl</kbd>
           </span>
         </div>
 

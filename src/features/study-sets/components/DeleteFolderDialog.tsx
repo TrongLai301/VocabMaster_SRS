@@ -8,13 +8,13 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Folder } from '@/types/database.types';
+import { Folder as FolderType } from '@/types/database.types';
 import { deleteFolder } from '@/services/api/studySetService';
 import { toast } from 'sonner';
-import { FolderKanban, Info, AlertCircle } from 'lucide-react';
+import { Folder, Info, AlertCircle } from 'lucide-react';
 
 interface DeleteFolderDialogProps {
-  folder: Folder | null;
+  folder: FolderType | null;
   isOpen: boolean;
   onClose: () => void;
   onDeleted: (folderId: string) => void;
@@ -50,7 +50,7 @@ export const DeleteFolderDialog: React.FC<DeleteFolderDialogProps> = ({
         <DialogHeader>
           <div className="flex items-center gap-2 text-destructive mb-1">
             <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center text-destructive">
-              <FolderKanban className="w-5 h-5" />
+              <Folder className="w-5 h-5" />
             </div>
             <div>
               <DialogTitle>Xóa thư mục?</DialogTitle>

@@ -3,14 +3,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { FolderKanban } from 'lucide-react';
+import { Folder } from 'lucide-react';
 import { createFolder } from '@/services/api/studySetService';
-import { Folder } from '@/types/database.types';
+import { Folder as FolderType } from '@/types/database.types';
 
 interface CreateFolderModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (newFolder: Folder) => void;
+  onSuccess: (newFolder: FolderType) => void;
 }
 
 const COLOR_OPTIONS = [
@@ -56,11 +56,11 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[94vw] sm:w-full sm:max-w-lg p-5 sm:p-7">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <FolderKanban className="h-5 w-5" />
+              <Folder className="h-5 w-5" />
             </div>
             <div>
               <DialogTitle>Tạo Thư Mục Mới</DialogTitle>
@@ -107,14 +107,23 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
             </div>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+          <div className="flex items-center justify-end gap-3 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="rounded-xl flex-1 sm:flex-none px-5 h-10"
+            >
               Hủy
             </Button>
-            <Button type="submit" disabled={loading || !name.trim()} className="font-semibold shadow-md">
+            <Button
+              type="submit"
+              disabled={loading || !name.trim()}
+              className="rounded-xl flex-1 sm:flex-none px-6 h-10 font-semibold shadow-md"
+            >
               {loading ? 'Đang tạo...' : 'Tạo thư mục'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

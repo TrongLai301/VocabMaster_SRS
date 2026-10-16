@@ -2,7 +2,7 @@
 # VOCABMASTER SRS - AUTOMATION MAKEFILE
 # ==============================================================================
 
-.PHONY: help dev build preview clean sb-start sb-stop sb-status sb-reset sb-migrate-new sb-push sb-pull sb-link
+.PHONY: help dev build preview clean deploy deploy-preview sb-start sb-stop sb-status sb-reset sb-migrate-new sb-push sb-pull sb-link
 
 help: ## Hiển thị hướng dẫn các lệnh
 	@echo "Danh sách các lệnh hỗ trợ trong dự án:"
@@ -20,6 +20,17 @@ build: ## Kiểm tra TypeScript và build bản Production
 
 preview: ## Xem trước bản build Production
 	npm run preview
+
+# ==============================================================================
+# 🚀 VERCEL DEPLOYMENT
+# ==============================================================================
+deploy: ## Build và deploy trực tiếp lên Production Vercel
+	npm run build
+	npx vercel --prod
+
+deploy-preview: ## Deploy bản Preview thử nghiệm lên Vercel
+	npx vercel
+
 
 # ==============================================================================
 # 🏠 SUPABASE LOCAL

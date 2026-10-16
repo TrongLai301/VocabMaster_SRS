@@ -84,9 +84,9 @@ export const AnalyticsPage: React.FC = () => {
             <h1 className="text-3xl font-black tracking-tight text-foreground font-sans">
               Thống Kê & Chuyên Cần
             </h1>
-            <Badge variant="secondary" className="gap-1 font-mono text-xs">
+            <Badge variant="secondary" className="gap-1 text-xs font-semibold">
               <BarChart3 className="w-3.5 h-3.5 text-primary" />
-              <span>Phase 5 Analytics</span>
+              <span>Báo cáo học tập</span>
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">

@@ -8,6 +8,18 @@ import { updateCard } from '@/services/api/studySetService';
 import { Card } from '@/types/database.types';
 import { toast } from 'sonner';
 import { soundFX } from '@/lib/audioFX';
+import { CustomSelect, SelectOption } from '@/components/ui/custom-select';
+
+const PART_OF_SPEECH_OPTIONS: SelectOption[] = [
+  { value: 'noun', label: 'Danh từ (Noun)' },
+  { value: 'verb', label: 'Động từ (Verb)' },
+  { value: 'adjective', label: 'Tính từ (Adjective)' },
+  { value: 'adverb', label: 'Trạng từ (Adverb)' },
+  { value: 'phrase', label: 'Cụm từ (Phrase)' },
+  { value: 'idiom', label: 'Thành ngữ (Idiom)' },
+  { value: 'phrasal verb', label: 'Cụm động từ (Phrasal Verb)' },
+  { value: 'preposition', label: 'Giới từ (Preposition)' },
+];
 
 interface EditCardModalProps {
   card: Card | null;
@@ -117,19 +129,12 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase text-muted-foreground">Loại từ (Part of Speech)</label>
-              <select
+              <CustomSelect
                 value={partOfSpeech}
-                onChange={(e) => setPartOfSpeech(e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="noun">Noun (Danh từ)</option>
-                <option value="verb">Verb (Động từ)</option>
-                <option value="adjective">Adjective (Tính từ)</option>
-                <option value="adverb">Adverb (Trạng từ)</option>
-                <option value="phrase">Phrase (Cụm từ)</option>
-                <option value="idiom">Idiom (Thành ngữ)</option>
-                <option value="preposition">Preposition (Giới từ)</option>
-              </select>
+                onChange={(val) => setPartOfSpeech(val)}
+                options={PART_OF_SPEECH_OPTIONS}
+                className="h-10"
+              />
             </div>
 
             <div className="space-y-1.5">

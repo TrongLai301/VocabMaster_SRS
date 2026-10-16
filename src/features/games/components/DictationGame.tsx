@@ -114,11 +114,12 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
     }
   }, [currentIndex, currentCard, isCompleted, currentQuestionMode, speakCurrentWord]);
 
-  // Lắng nghe phím tắt: Ctrl + Space để nghe lại
+  // Lắng nghe phím tắt: chỉ phím 'Ctrl' để nghe phát âm
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
+      if (e.key === 'Control' || e.code === 'ControlLeft' || e.code === 'ControlRight') {
         e.preventDefault();
+        if (e.repeat) return;
         speakCurrentWord();
       }
     };
@@ -266,10 +267,13 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => speak(card.term, { lang: 'en-US' })}
-                        className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors cursor-pointer shrink-0"
+                        className="h-8 px-2 rounded-lg bg-primary/10 text-primary flex items-center gap-1 hover:bg-primary/20 transition-colors cursor-pointer shrink-0 text-xs font-semibold"
                         title="Nghe lại phát âm"
                       >
                         <Volume2 className="w-4 h-4" />
+                        <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-background/80 text-foreground border border-border/50 uppercase">
+                          Ctrl
+                        </span>
                       </button>
                       <div>
                         <div className="flex items-center gap-2">
@@ -461,14 +465,15 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
                     ? 'bg-primary text-primary-foreground ring-8 ring-primary/25 scale-105'
                     : 'bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105'
                 }`}
-                title="Bấm để nghe phát âm"
+                title="Bấm để nghe phát âm (Phím tắt: [Ctrl])"
               >
                 <Volume2 className={`w-10 h-10 ${isSpeaking ? 'animate-pulse' : ''}`} />
               </button>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground font-medium">
-                  Phím tắt: <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono border">Ctrl + Space</kbd>
+                <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                  <span>Phím tắt:</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono border text-foreground font-semibold">Ctrl</kbd>
                 </span>
                 <span className="text-muted-foreground/40">•</span>
                 <Button
@@ -522,9 +527,11 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
                 type="button"
                 onClick={() => speakCurrentWord(playbackRate)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border bg-background hover:bg-muted text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                title="Nghe gợi ý âm thanh (Phím tắt: [Ctrl])"
               >
                 <Volume2 className="w-3.5 h-3.5 text-primary" />
                 <span>Nghe gợi ý âm thanh</span>
+                <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-muted text-muted-foreground border border-border/50 uppercase">Ctrl</span>
               </button>
             </div>
           </div>
@@ -541,10 +548,13 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
                 <button
                   type="button"
                   onClick={() => speakCurrentWord(playbackRate)}
-                  className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors cursor-pointer shrink-0"
-                  title="Nghe phát âm"
+                  className="h-8 px-2 rounded-xl bg-primary/10 text-primary flex items-center gap-1 hover:bg-primary/20 transition-colors cursor-pointer shrink-0 text-xs font-semibold"
+                  title="Nghe phát âm (Phím tắt: [Ctrl])"
                 >
                   <Volume2 className="w-4 h-4" />
+                  <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-background/80 text-foreground border border-border/50 uppercase">
+                    Ctrl
+                  </span>
                 </button>
               </div>
 
