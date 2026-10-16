@@ -64,6 +64,17 @@ export async function fetchStudyHeatmapData(userId?: string): Promise<DailyActiv
   return activityMap;
 }
 
+export function getLocalDateStr(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function getUtcDateStr(d: Date = new Date()): string {
+  return d.toISOString().split('T')[0];
+}
+
 /**
  * Tính toán Chuỗi ngày học liên tục (Streak) dựa trên lịch sử study_logs
  */
@@ -76,18 +87,21 @@ export async function calculateStreak(userId?: string): Promise<UserStreakInfo> 
   const activeDaysCount = activeDates.length;
 
   if (activeDates.length === 0) {
-    return {
+    const emptyResult = {
       currentStreak: 0,
       longestStreak: 0,
       totalReviews: 0,
       activeDaysCount: 0,
     };
+    try {
+      window.dispatchEvent(
+        new CustomEvent('vocab_streak_updated', { detail: emptyResult })
+      );
+    } catch {
+      // ignore
+    }
+    return emptyResult;
   }
-
-  const todayStr = new Date().toISOString().split('T')[0];
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
 
   let currentStreak = 0;
   let longestStreak = 0;
@@ -101,7 +115,9 @@ export async function calculateStreak(userId?: string): Promise<UserStreakInfo> 
       const diffTime = currentDate.getTime() - prevDate.getTime();
       const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
 
-      if (diffDays === 1) {
+      if (diffDays === 0) {
+        continue;
+      } else if (diffDays === 1) {
         tempStreak++;
       } else {
         tempStreak = 1;
@@ -116,15 +132,23 @@ export async function calculateStreak(userId?: string): Promise<UserStreakInfo> 
     prevDate = currentDate;
   }
 
+  // Kiểm tra ngày có hoạt động (hỗ trợ cả UTC và Local date)
+  const hasActivityOnDay = (d: Date) => {
+    const local = getLocalDateStr(d);
+    const utc = getUtcDateStr(d);
+    return Boolean(activityMap[local] || activityMap[utc]);
+  };
+
   // Tính current streak (bắt đầu từ hôm nay hoặc hôm qua lùi dần)
-  const isStudiedToday = Boolean(activityMap[todayStr]);
-  const isStudiedYesterday = Boolean(activityMap[yesterdayStr]);
+  const isStudiedToday = hasActivityOnDay(new Date());
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isStudiedYesterday = hasActivityOnDay(yesterday);
 
   if (isStudiedToday || isStudiedYesterday) {
-    let checkDate = isStudiedToday ? new Date() : yesterday;
+    let checkDate = new Date(isStudiedToday ? Date.now() : yesterday.getTime());
     while (true) {
-      const dateStr = checkDate.toISOString().split('T')[0];
-      if (activityMap[dateStr]) {
+      if (hasActivityOnDay(checkDate)) {
         currentStreak++;
         checkDate.setDate(checkDate.getDate() - 1);
       } else {
@@ -135,6 +159,8 @@ export async function calculateStreak(userId?: string): Promise<UserStreakInfo> 
     currentStreak = 0;
   }
 
+  const finalLongest = Math.max(longestStreak, currentStreak);
+
   // Tự động cập nhật vào profile nếu dùng Supabase
   if (isSupabaseConfigured && currentUserId !== 'local-user') {
     try {
@@ -142,7 +168,7 @@ export async function calculateStreak(userId?: string): Promise<UserStreakInfo> 
         .from('profiles')
         .update({
           current_streak: currentStreak,
-          longest_streak: Math.max(longestStreak, currentStreak),
+          longest_streak: finalLongest,
           last_active_at: new Date().toISOString(),
         })
         .eq('id', currentUserId);
@@ -151,9 +177,33 @@ export async function calculateStreak(userId?: string): Promise<UserStreakInfo> 
     }
   }
 
+  // Luôn lưu cache local và phát event cập nhật thời gian thực
+  try {
+    const rawLocalProfile = localStorage.getItem('vocab_local_profile');
+    if (rawLocalProfile) {
+      const parsed = JSON.parse(rawLocalProfile);
+      parsed.current_streak = currentStreak;
+      parsed.longest_streak = Math.max(parsed.longest_streak || 0, finalLongest);
+      parsed.last_active_at = new Date().toISOString();
+      localStorage.setItem('vocab_local_profile', JSON.stringify(parsed));
+    }
+    localStorage.setItem(
+      'vocab_streak_info',
+      JSON.stringify({ currentStreak, longestStreak: finalLongest })
+    );
+
+    window.dispatchEvent(
+      new CustomEvent('vocab_streak_updated', {
+        detail: { currentStreak, longestStreak: finalLongest },
+      })
+    );
+  } catch {
+    // ignore
+  }
+
   return {
     currentStreak,
-    longestStreak: Math.max(longestStreak, currentStreak),
+    longestStreak: finalLongest,
     totalReviews,
     activeDaysCount,
   };

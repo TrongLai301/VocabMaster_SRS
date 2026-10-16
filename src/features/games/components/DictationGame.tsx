@@ -29,6 +29,8 @@ import {
   Shuffle,
   ThumbsUp,
 } from 'lucide-react';
+import { soundFX } from '@/lib/audioFX';
+import { submitCardReview } from '@/services/api/srsService';
 
 export interface DictationStats {
   total: number;
@@ -114,17 +116,64 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
     }
   }, [currentIndex, currentCard, isCompleted, currentQuestionMode, speakCurrentWord]);
 
-  // Lắng nghe phím tắt: Ctrl + Space để nghe lại
+  // Xáo trộn thẻ ngẫu nhiên (Fisher-Yates shuffle)
+  const handleShuffleCards = useCallback(() => {
+    setActiveCards((prev) => {
+      const copy = [...prev];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    });
+    setCurrentIndex(0);
+    setUserInput('');
+    setCheckResult(null);
+    setIsAnswerChecked(false);
+    setShowHint(false);
+    setHasTriedCurrentCard(false);
+    soundFX.playFlip();
+  }, []);
+
+  const handleNext = useCallback(() => {
+    // Tự động ghi nhận tiến trình ôn tập SRS và cập nhật chuỗi Streak
+    if (currentCard) {
+      const rating = hasTriedCurrentCard ? 'again' : 'good';
+      submitCardReview(currentCard.id, rating).catch(() => {});
+    }
+
+    if (currentIndex + 1 < activeCards.length) {
+      setCurrentIndex((prev) => prev + 1);
+    } else {
+      setIsCompleted(true);
+      const total = activeCards.length;
+      const accuracy = total > 0 ? Math.round((firstTimeCorrectCount / total) * 100) : 0;
+      onFinish?.({
+        total,
+        correctFirstTime: firstTimeCorrectCount,
+        accuracy,
+        wrongCards,
+      });
+    }
+  }, [currentCard, hasTriedCurrentCard, currentIndex, activeCards.length, firstTimeCorrectCount, wrongCards, onFinish]);
+
+  // Lắng nghe phím tắt: Ctrl để nghe phát âm, Enter để chuyển tiếp khi đã kiểm tra
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
+      if (e.key === 'Control' || e.code === 'ControlLeft' || e.code === 'ControlRight') {
         e.preventDefault();
+        if (e.repeat) return;
         speakCurrentWord();
+      } else if (e.key === 'Enter' || e.code === 'Enter' || e.code === 'NumpadEnter') {
+        if (isAnswerChecked) {
+          e.preventDefault();
+          handleNext();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [speakCurrentWord]);
+  }, [speakCurrentWord, isAnswerChecked, handleNext]);
 
   const handleCheck = () => {
     if (!userInput.trim() || !currentCard) return;
@@ -143,10 +192,12 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
     setIsAnswerChecked(true);
 
     if (result.isExactMatch || result.isSynonymMatch) {
+      soundFX.playSuccess();
       if (!hasTriedCurrentCard) {
         setFirstTimeCorrectCount((prev) => prev + 1);
       }
     } else {
+      soundFX.playError();
       if (!hasTriedCurrentCard) {
         setHasTriedCurrentCard(true);
         setWrongCards((prev) => (prev.some((c) => c.id === currentCard.id) ? prev : [...prev, currentCard]));
@@ -166,22 +217,6 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
       setFirstTimeCorrectCount((prev) => prev + 1);
     }
     setWrongCards((prev) => prev.filter((c) => c.id !== currentCard.id));
-  };
-
-  const handleNext = () => {
-    if (currentIndex + 1 < activeCards.length) {
-      setCurrentIndex((prev) => prev + 1);
-    } else {
-      setIsCompleted(true);
-      const total = activeCards.length;
-      const accuracy = total > 0 ? Math.round((firstTimeCorrectCount / total) * 100) : 0;
-      onFinish?.({
-        total,
-        correctFirstTime: firstTimeCorrectCount,
-        accuracy,
-        wrongCards,
-      });
-    }
   };
 
   const handleRetryWrongs = () => {
@@ -266,10 +301,13 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => speak(card.term, { lang: 'en-US' })}
-                        className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors cursor-pointer shrink-0"
+                        className="h-8 px-2 rounded-lg bg-primary/10 text-primary flex items-center gap-1 hover:bg-primary/20 transition-colors cursor-pointer shrink-0 text-xs font-semibold"
                         title="Nghe lại phát âm"
                       >
                         <Volume2 className="w-4 h-4" />
+                        <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-background/80 text-foreground border border-border/50 uppercase">
+                          Ctrl
+                        </span>
                       </button>
                       <div>
                         <div className="flex items-center gap-2">
@@ -321,6 +359,18 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
             </Button>
 
             <Button
+              onClick={() => {
+                handleRestartAll();
+                handleShuffleCards();
+              }}
+              variant="outline"
+              className="w-full sm:w-auto gap-2 rounded-xl font-semibold border-primary/30 text-primary hover:bg-primary/5"
+            >
+              <Shuffle className="w-4 h-4" />
+              <span>Xáo trộn & luyện lại</span>
+            </Button>
+
+            <Button
               onClick={onExit}
               variant="secondary"
               className="w-full sm:w-auto rounded-xl font-semibold"
@@ -344,17 +394,33 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
       {/* Top Header Navigation */}
-      <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+      <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground gap-2">
         <button
           onClick={onExit}
-          className="hover:text-foreground transition-colors cursor-pointer flex items-center gap-1"
+          className="hover:text-foreground transition-colors cursor-pointer flex items-center gap-1 shrink-0"
         >
-          &larr; <span>Thoát chế độ</span>
+          &larr; <span className="hidden sm:inline">Thoát chế độ</span>
         </button>
-        <span className="font-mono bg-muted px-2.5 py-1 rounded-full text-foreground">
-          Từ {currentIndex + 1} / {activeCards.length}
-        </span>
-        <span className="text-primary font-mono font-bold">
+
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleShuffleCards}
+            className="h-7 sm:h-8 gap-1.5 px-2.5 rounded-xl text-xs font-semibold hover:bg-muted cursor-pointer text-foreground"
+            title="Xáo trộn ngẫu nhiên thứ tự các thẻ từ vựng"
+          >
+            <Shuffle className="w-3.5 h-3.5 text-primary" />
+            <span>Xáo trộn thẻ</span>
+          </Button>
+
+          <span className="font-mono bg-muted px-2.5 py-1 rounded-full text-foreground shrink-0">
+            Từ {currentIndex + 1} / {activeCards.length}
+          </span>
+        </div>
+
+        <span className="text-primary font-mono font-bold shrink-0">
           Đúng lần đầu: {firstTimeCorrectCount}
         </span>
       </div>
@@ -461,14 +527,15 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
                     ? 'bg-primary text-primary-foreground ring-8 ring-primary/25 scale-105'
                     : 'bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105'
                 }`}
-                title="Bấm để nghe phát âm"
+                title="Bấm để nghe phát âm (Phím tắt: [Ctrl])"
               >
                 <Volume2 className={`w-10 h-10 ${isSpeaking ? 'animate-pulse' : ''}`} />
               </button>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground font-medium">
-                  Phím tắt: <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono border">Ctrl + Space</kbd>
+                <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                  <span>Phím tắt:</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono border text-foreground font-semibold">Ctrl</kbd>
                 </span>
                 <span className="text-muted-foreground/40">•</span>
                 <Button
@@ -522,9 +589,11 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
                 type="button"
                 onClick={() => speakCurrentWord(playbackRate)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border bg-background hover:bg-muted text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                title="Nghe gợi ý âm thanh (Phím tắt: [Ctrl])"
               >
                 <Volume2 className="w-3.5 h-3.5 text-primary" />
                 <span>Nghe gợi ý âm thanh</span>
+                <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-muted text-muted-foreground border border-border/50 uppercase">Ctrl</span>
               </button>
             </div>
           </div>
@@ -541,10 +610,13 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
                 <button
                   type="button"
                   onClick={() => speakCurrentWord(playbackRate)}
-                  className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors cursor-pointer shrink-0"
-                  title="Nghe phát âm"
+                  className="h-8 px-2 rounded-xl bg-primary/10 text-primary flex items-center gap-1 hover:bg-primary/20 transition-colors cursor-pointer shrink-0 text-xs font-semibold"
+                  title="Nghe phát âm (Phím tắt: [Ctrl])"
                 >
                   <Volume2 className="w-4 h-4" />
+                  <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-background/80 text-foreground border border-border/50 uppercase">
+                    Ctrl
+                  </span>
                 </button>
               </div>
 
@@ -583,7 +655,7 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (isCorrect) {
+              if (isAnswerChecked) {
                 handleNext();
               } else {
                 handleCheck();
@@ -605,7 +677,7 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck={false}
-                disabled={isCorrect}
+                readOnly={isCorrect}
                 className={`text-center text-lg sm:text-xl font-bold tracking-wide h-14 sm:h-16 rounded-2xl transition-all ${
                   isAnswerChecked
                     ? isCorrect
@@ -700,9 +772,12 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
                 <Button
                   type="button"
                   onClick={handleNext}
-                  className="gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                  className="gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer shadow-md"
                 >
                   <span>{currentIndex + 1 === activeCards.length ? 'Xem tổng kết' : 'Từ tiếp theo'}</span>
+                  <kbd className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-emerald-700/60 text-[10px] font-mono border border-emerald-500/40">
+                    ↵ Enter
+                  </kbd>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               ) : isAnswerChecked ? (
@@ -724,9 +799,12 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
                     type="button"
                     onClick={handleNext}
                     variant="secondary"
-                    className="gap-1.5 text-xs rounded-xl"
+                    className="gap-1.5 text-xs rounded-xl cursor-pointer"
                   >
                     <span>Bỏ qua</span>
+                    <kbd className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono border">
+                      ↵ Enter
+                    </kbd>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -738,7 +816,7 @@ export const DictationGame: React.FC<DictationGameProps> = ({ cards, onFinish, o
                 >
                   <span>Kiểm tra</span>
                   <kbd className="hidden sm:inline-block px-1 py-0.5 rounded bg-primary-foreground/20 text-[10px] font-mono">
-                    ↵
+                    ↵ Enter
                   </kbd>
                 </Button>
               )}

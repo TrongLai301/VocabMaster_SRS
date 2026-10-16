@@ -17,8 +17,11 @@ import {
   AlertCircle, 
   FileText,
   Copy,
-  Plus
+  Plus,
+  Folder as FolderIcon,
+  Layers
 } from 'lucide-react';
+import { CustomSelect } from '@/components/ui/custom-select';
 
 interface CreateSetFromTsvModalProps {
   open: boolean;
@@ -142,18 +145,23 @@ export const CreateSetFromTsvModal: React.FC<CreateSetFromTsvModalProps> = ({
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase text-muted-foreground">Thư mục phân loại</label>
-              <select
+              <CustomSelect
                 value={folderId}
-                onChange={(e) => setFolderId(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">-- Đứng độc lập (Không xếp thư mục) --</option>
-                {folders.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    📁 {f.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setFolderId}
+                options={[
+                  {
+                    value: '',
+                    label: '-- Đứng độc lập (Không xếp thư mục) --',
+                    icon: <Layers className="w-4 h-4 text-primary" />,
+                  },
+                  ...folders.map((f) => ({
+                    value: f.id,
+                    label: f.name,
+                    icon: <FolderIcon className="w-4 h-4" style={{ color: f.color_code || '#3B82F6' }} />,
+                  })),
+                ]}
+                placeholder="Chọn thư mục chứa..."
+              />
             </div>
 
             <div className="space-y-1.5">

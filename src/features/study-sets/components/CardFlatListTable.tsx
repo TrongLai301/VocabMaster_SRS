@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card as CardType } from '@/types/database.types';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -34,9 +34,29 @@ export const CardFlatListTable: React.FC<CardFlatListTableProps> = ({
   const [selectedPos, setSelectedPos] = useState<string>('all');
   const { speak } = useSpeechTTS();
 
+  const [activeTerm, setActiveTerm] = useState<string | null>(null);
+
   const speakTerm = (text: string) => {
+    setActiveTerm(text);
     speak(text);
   };
+
+  // Keyboard Shortcut: chỉ phím 'Ctrl' để nghe phát âm từ đang chọn/xem
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+      if (e.key === 'Control' || e.code === 'ControlLeft' || e.code === 'ControlRight') {
+        e.preventDefault();
+        if (e.repeat) return;
+        const target = activeTerm || (cards.length > 0 ? cards[0].term : null);
+        if (target) {
+          speak(target);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTerm, cards, speak]);
 
   // Lấy danh sách các loại từ có trong bộ thẻ
   const availablePos = useMemo(() => {
@@ -154,13 +174,16 @@ export const CardFlatListTable: React.FC<CardFlatListTableProps> = ({
 
                   <div className="flex items-center gap-1 shrink-0">
                     <Button
-                      size="icon"
+                      size="sm"
                       variant="ghost"
-                      className="h-8 w-8 rounded-full text-primary hover:bg-primary/10"
+                      className="h-8 px-2 rounded-full text-xs font-semibold gap-1 text-primary hover:bg-primary/10 transition-all cursor-pointer"
                       onClick={() => speakTerm(card.term)}
-                      title="Nghe phát âm"
+                      title="Nghe phát âm (Phím tắt: [Ctrl])"
                     >
                       <Volume2 className="w-4 h-4" />
+                      <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-muted/80 text-muted-foreground border border-border/50 uppercase">
+                        Ctrl
+                      </span>
                     </Button>
                     {onEditCard && (
                       <Button
@@ -250,13 +273,16 @@ export const CardFlatListTable: React.FC<CardFlatListTableProps> = ({
                           )}
                         </div>
                         <Button
-                          size="icon"
+                          size="sm"
                           variant="ghost"
-                          className="h-7 w-7 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                          className="h-7 px-2 rounded-full text-xs font-semibold gap-1 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
                           onClick={() => speakTerm(card.term)}
-                          title="Nghe phát âm bản xứ"
+                          title="Nghe phát âm bản xứ (Phím tắt: [Ctrl])"
                         >
-                          <Volume2 className="h-4 w-4" />
+                          <Volume2 className="h-3.5 w-3.5" />
+                          <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-muted/80 text-muted-foreground border border-border/50 uppercase">
+                            Ctrl
+                          </span>
                         </Button>
                       </div>
                     </TableCell>

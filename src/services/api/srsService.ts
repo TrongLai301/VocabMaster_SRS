@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from '@/services/supabase';
 import { calculateNextSRS, ReviewRating, CardProgressInput } from '@/services/srs/sm2';
 import { Card, UserCardProgress, StudyLog } from '@/types/database.types';
+import { calculateStreak, getLocalDateStr } from '@/services/api/analyticsService';
 
 const PROGRESS_STORAGE_KEY = 'vocab_user_card_progress';
 const STUDY_LOGS_STORAGE_KEY = 'vocab_study_logs';
@@ -271,29 +272,32 @@ export async function submitCardReview(
   // 3. Cập nhật vào Supabase
   if (isSupabaseConfigured && currentUserId !== 'local-user') {
     try {
-      const { error: upsertErr } = await supabase.from('user_card_progress').upsert({
-        user_id: currentUserId,
-        card_id: cardId,
-        box_level: nextSRS.boxLevel,
-        repetition: nextSRS.repetition,
-        interval_days: nextSRS.intervalDays,
-        ease_factor: nextSRS.easeFactor,
-        state: nextSRS.state,
-        last_reviewed_at: nowIso,
-        next_review_at: nextSRS.nextReviewAt.toISOString(),
-        total_reviews: (existingProgressRecord?.total_reviews || 0) + 1,
-        consecutive_correct:
-          rating === 'again' ? 0 : (existingProgressRecord?.consecutive_correct || 0) + 1,
-      });
+      const { error: upsertErr } = await supabase.from('user_card_progress').upsert(
+        {
+          user_id: currentUserId,
+          card_id: cardId,
+          box_level: nextSRS.boxLevel,
+          repetition: nextSRS.repetition,
+          interval_days: nextSRS.intervalDays,
+          ease_factor: nextSRS.easeFactor,
+          state: nextSRS.state,
+          last_reviewed_at: nowIso,
+          next_review_at: nextSRS.nextReviewAt.toISOString(),
+          total_reviews: (existingProgressRecord?.total_reviews || 0) + 1,
+          consecutive_correct:
+            rating === 'again' ? 0 : (existingProgressRecord?.consecutive_correct || 0) + 1,
+        },
+        { onConflict: 'user_id,card_id' }
+      );
 
       if (upsertErr) throw upsertErr;
 
-      // Ghi log học tập vào study_logs
+      // Ghi log học tập vào study_logs với ngày địa phương
       await supabase.from('study_logs').insert({
         user_id: currentUserId,
         card_id: cardId,
         rating,
-        reviewed_date: nowIso.split('T')[0],
+        reviewed_date: getLocalDateStr(new Date()),
       });
     } catch (err) {
       console.warn('[srsService] Supabase submitCardReview error, fallback to local:', err);
@@ -302,6 +306,9 @@ export async function submitCardReview(
   } else {
     saveToLocal();
   }
+
+  // Tự động tính toán lại Streak và phát sự kiện cập nhật giao diện
+  calculateStreak(currentUserId).catch(() => {});
 
   function saveToLocal() {
     const localList = getLocalProgress();
@@ -331,7 +338,7 @@ export async function submitCardReview(
     }
     saveLocalProgress(localList);
 
-    // Ghi local log
+    // Ghi local log với ngày địa phương
     const localLogs = getLocalLogs();
     localLogs.push({
       id: `log-${Date.now()}`,
@@ -339,7 +346,7 @@ export async function submitCardReview(
       card_id: cardId,
       rating,
       time_taken_ms: null,
-      reviewed_date: nowIso.split('T')[0],
+      reviewed_date: getLocalDateStr(new Date()),
       created_at: nowIso,
     });
     saveLocalLogs(localLogs);

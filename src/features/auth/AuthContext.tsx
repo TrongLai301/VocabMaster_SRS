@@ -17,10 +17,37 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const LOCAL_PROFILE_KEY = 'vocab_local_profile';
+
+function getInitialProfile(): Profile | null {
+  try {
+    const raw = localStorage.getItem(LOCAL_PROFILE_KEY);
+    if (raw) return JSON.parse(raw);
+    const initial: Profile = {
+      id: 'local-user',
+      email: 'local@vocabmaster.app',
+      display_name: 'Người học',
+      avatar_url: null,
+      current_streak: 0,
+      longest_streak: 0,
+      daily_goal_cards: 20,
+      audio_auto_play: true,
+      preferred_voice: 'en-US',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      last_active_at: new Date().toISOString(),
+    };
+    localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(initial));
+    return initial;
+  } catch {
+    return null;
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(getInitialProfile);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
@@ -38,6 +65,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Lỗi lấy profile:', err);
     }
   };
+
+  // Lắng nghe sự kiện cập nhật Streak để cập nhật ngay lập tức UI profile
+  useEffect(() => {
+    const handleStreakUpdate = (e: any) => {
+      const { currentStreak, longestStreak } = e.detail || {};
+      if (typeof currentStreak === 'number') {
+        setProfile((prev) => {
+          if (!prev) return prev;
+          const updated: Profile = {
+            ...prev,
+            current_streak: currentStreak,
+            longest_streak: Math.max(prev.longest_streak || 0, longestStreak ?? currentStreak),
+          };
+          if (!user) {
+            try {
+              localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(updated));
+            } catch {
+              // ignore
+            }
+          }
+          return updated;
+        });
+      }
+    };
+
+    window.addEventListener('vocab_streak_updated', handleStreakUpdate as EventListener);
+    return () => {
+      window.removeEventListener('vocab_streak_updated', handleStreakUpdate as EventListener);
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -64,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
-        setProfile(null);
+        setProfile(getInitialProfile());
       }
       setLoading(false);
     });
@@ -109,12 +166,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setUser(null);
     setSession(null);
-    setProfile(null);
+    setProfile(getInitialProfile());
   };
 
   const refreshProfile = async () => {
     if (user) {
       await fetchProfile(user.id);
+    } else {
+      setProfile(getInitialProfile());
     }
   };
 

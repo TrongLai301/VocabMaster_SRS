@@ -63,7 +63,7 @@ export const DialogContent: React.FC<
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in-0 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in-0 duration-200">
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity" 
@@ -73,7 +73,8 @@ export const DialogContent: React.FC<
       {/* Modal Dialog */}
       <div
         className={cn(
-          'relative z-50 w-full max-w-lg rounded-2xl border bg-card p-6 shadow-2xl transition-all max-h-[90vh] overflow-y-auto text-card-foreground',
+          'relative z-50 w-full max-w-lg rounded-2xl border bg-card p-5 sm:p-6 shadow-2xl transition-all max-h-[92vh] text-card-foreground',
+          !className?.includes('overflow-') && 'overflow-y-auto',
           className
         )}
         {...props}

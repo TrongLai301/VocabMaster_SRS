@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Folder as FolderIcon, Layers } from 'lucide-react';
+import { CustomSelect } from '@/components/ui/custom-select';
 import { createStudySet } from '@/services/api/studySetService';
 import { Folder, StudySet } from '@/types/database.types';
 
@@ -60,11 +61,11 @@ export const CreateStudySetModal: React.FC<CreateStudySetModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[94vw] sm:w-full sm:max-w-xl md:max-w-2xl p-5 sm:p-7 overflow-visible">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <BookOpen className="h-5 w-5" />
+              <Layers className="h-5 w-5" />
             </div>
             <div>
               <DialogTitle>Tạo Bộ Thẻ Mới</DialogTitle>
@@ -86,18 +87,23 @@ export const CreateStudySetModal: React.FC<CreateStudySetModalProps> = ({
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase text-muted-foreground">Thuộc thư mục</label>
-            <select
+            <CustomSelect
               value={folderId}
-              onChange={(e) => setFolderId(e.target.value)}
-              className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">-- Không xếp vào thư mục (Đứng độc lập) --</option>
-              {folders.map((f) => (
-                <option key={f.id} value={f.id}>
-                  📁 {f.name}
-                </option>
-              ))}
-            </select>
+              onChange={setFolderId}
+              options={[
+                {
+                  value: '',
+                  label: '-- Không xếp vào thư mục (Đứng độc lập) --',
+                  icon: <Layers className="w-4 h-4 text-primary" />,
+                },
+                ...folders.map((f) => ({
+                  value: f.id,
+                  label: f.name,
+                  icon: <FolderIcon className="w-4 h-4" style={{ color: f.color_code || '#3B82F6' }} />,
+                })),
+              ]}
+              placeholder="Chọn thư mục chứa..."
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -119,14 +125,23 @@ export const CreateStudySetModal: React.FC<CreateStudySetModalProps> = ({
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+          <div className="flex items-center justify-end gap-3 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="rounded-xl flex-1 sm:flex-none px-5 h-10"
+            >
               Hủy
             </Button>
-            <Button type="submit" disabled={loading || !title.trim()} className="font-semibold shadow-md">
+            <Button
+              type="submit"
+              disabled={loading || !title.trim()}
+              className="rounded-xl flex-1 sm:flex-none px-6 h-10 font-semibold shadow-md"
+            >
               {loading ? 'Đang tạo...' : 'Tạo bộ thẻ'}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

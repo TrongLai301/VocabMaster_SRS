@@ -185,11 +185,12 @@ export async function createFolder(params: { name: string; description?: string;
 export async function getStudySets(folderId?: string): Promise<StudySet[]> {
   if (!isSupabaseConfigured) {
     const sets = getLocal<StudySet[]>('sets', INITIAL_SETS);
-    if (folderId) return sets.filter((s) => s.folder_id === folderId);
-    return sets;
+    const filtered = folderId ? sets.filter((s) => s.folder_id === folderId) : sets;
+    // Cái nào vào trước thì xếp thứ 1 (created_at tăng dần)
+    return [...filtered].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   }
 
-  let query = supabase.from('study_sets').select('*, cards(count)').order('created_at', { ascending: false });
+  let query = supabase.from('study_sets').select('*, cards(count)').order('created_at', { ascending: true });
   if (folderId) query = query.eq('folder_id', folderId);
 
   const { data, error } = await query;
@@ -254,6 +255,41 @@ export async function createStudySet(params: {
 
   if (error) throw error;
   return data as StudySet;
+}
+
+export async function updateStudySet(
+  setId: string,
+  updates: Partial<Omit<StudySet, 'id' | 'user_id' | 'created_at'>>
+): Promise<StudySet> {
+  if (!isSupabaseConfigured) {
+    const sets = getLocal<StudySet[]>('sets', INITIAL_SETS);
+    const index = sets.findIndex((s) => s.id === setId);
+    if (index === -1) throw new Error('Không tìm thấy bộ thẻ');
+    const updated: StudySet = {
+      ...sets[index],
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    sets[index] = updated;
+    setLocal('sets', sets);
+    return updated;
+  }
+
+  const { data, error } = await supabase
+    .from('study_sets')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', setId)
+    .select('*, cards(count)')
+    .single();
+
+  if (error) throw error;
+  return {
+    ...data,
+    total_cards: (data as any).cards?.[0]?.count ?? (data as any).total_cards ?? 0,
+  } as StudySet;
 }
 
 // ==========================================

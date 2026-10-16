@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   Home, 
-  FolderKanban, 
   Layers, 
+  RotateCcw, 
   Trophy, 
   BarChart3 
 } from 'lucide-react';
@@ -28,12 +28,12 @@ export const MobileBottomNav: React.FC = () => {
     {
       to: '/sets',
       label: 'Bộ thẻ',
-      icon: FolderKanban,
+      icon: Layers,
     },
     {
       to: '/review',
       label: 'Ôn tập',
-      icon: Layers,
+      icon: RotateCcw,
       badge: dueCount && dueCount > 0 ? dueCount : undefined,
     },
     {

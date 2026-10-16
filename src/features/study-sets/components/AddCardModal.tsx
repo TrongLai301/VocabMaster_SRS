@@ -6,6 +6,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { PlusCircle } from 'lucide-react';
 import { createCard } from '@/services/api/studySetService';
 import { Card } from '@/types/database.types';
+import { CustomSelect, SelectOption } from '@/components/ui/custom-select';
+
+const PART_OF_SPEECH_OPTIONS: SelectOption[] = [
+  { value: 'noun', label: 'Danh từ (Noun)' },
+  { value: 'verb', label: 'Động từ (Verb)' },
+  { value: 'adjective', label: 'Tính từ (Adjective)' },
+  { value: 'adverb', label: 'Trạng từ (Adverb)' },
+  { value: 'phrase', label: 'Cụm từ (Phrase)' },
+  { value: 'idiom', label: 'Thành ngữ (Idiom)' },
+  { value: 'phrasal verb', label: 'Cụm động từ (Phrasal Verb)' },
+];
 
 interface AddCardModalProps {
   open: boolean;
@@ -111,18 +122,12 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase text-muted-foreground">Loại từ</label>
-              <select
+              <CustomSelect
                 value={partOfSpeech}
-                onChange={(e) => setPartOfSpeech(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="noun">Danh từ (Noun)</option>
-                <option value="verb">Động từ (Verb)</option>
-                <option value="adjective">Tính từ (Adjective)</option>
-                <option value="adverb">Trạng từ (Adverb)</option>
-                <option value="idiom">Thành ngữ (Idiom)</option>
-                <option value="phrasal verb">Cụm động từ (Phrasal Verb)</option>
-              </select>
+                onChange={(val) => setPartOfSpeech(val)}
+                options={PART_OF_SPEECH_OPTIONS}
+                className="h-10"
+              />
             </div>
 
             <div className="space-y-1.5">

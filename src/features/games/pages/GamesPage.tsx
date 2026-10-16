@@ -7,11 +7,11 @@ import { MatchGame } from '@/features/games/components/MatchGame';
 import { DictationGame } from '@/features/games/components/DictationGame';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { CustomSelect } from '@/components/ui/custom-select';
 import { 
   Trophy, 
   Zap, 
   HelpCircle, 
-  BookOpen, 
   ArrowLeft, 
   Layers,
   Sparkles,
@@ -176,33 +176,34 @@ export const GamesPage: React.FC = () => {
             <h1 className="text-3xl font-black tracking-tight text-foreground font-sans">
               Khu Vực Trò Chơi Ôn Tập
             </h1>
-            <Badge variant="secondary" className="gap-1 font-mono text-xs">
+            <Badge variant="secondary" className="gap-1 text-xs font-semibold">
               <Trophy className="w-3.5 h-3.5 text-amber-500" />
-              <span>Phase 5 Gamification</span>
+              <span>3 Chế độ chơi</span>
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            Luyện tập phản xạ ghi nhớ từ vựng qua các mini-game trắc nghiệm và ghép thẻ tính giờ.
+            Luyện tập phản xạ ghi nhớ từ vựng qua Trắc nghiệm, Ghép thẻ tính giờ và Luyện gõ điền từ.
           </p>
         </div>
 
         {/* Study Set Selector */}
         {sets.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
               Chọn bộ thẻ:
             </span>
-            <select
-              value={selectedSetId}
-              onChange={(e) => handleSelectSet(e.target.value)}
-              className="h-9 px-3 py-1 text-xs rounded-xl border bg-card text-foreground font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer max-w-xs truncate"
-            >
-              {sets.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title} ({s.total_cards} từ)
-                </option>
-              ))}
-            </select>
+            <div className="w-full sm:w-64">
+              <CustomSelect
+                value={selectedSetId}
+                onChange={handleSelectSet}
+                options={sets.map((s) => ({
+                  value: s.id,
+                  label: `${s.title} (${s.total_cards || 0} từ)`,
+                  icon: <Layers className="w-4 h-4 text-primary" />,
+                }))}
+                placeholder="Chọn bộ thẻ..."
+              />
+            </div>
           </div>
         )}
       </div>
@@ -212,7 +213,7 @@ export const GamesPage: React.FC = () => {
         <div className="p-5 rounded-2xl border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <BookOpen className="w-6 h-6" />
+              <Layers className="w-6 h-6" />
             </div>
             <div>
               <h3 className="font-bold text-base text-foreground line-clamp-1">{selectedSet.title}</h3>
@@ -224,7 +225,11 @@ export const GamesPage: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
-              {cards.length >= 4 ? 'Đủ điều kiện chơi cả 2 chế độ' : 'Cần tối thiểu 2 từ'}
+              {cards.length >= 4
+                ? 'Đủ điều kiện chơi cả 3 chế độ'
+                : cards.length >= 2
+                  ? 'Đủ điều kiện Ghép từ & Luyện gõ (Cần 4 từ cho Trắc nghiệm)'
+                  : 'Cần tối thiểu 2 từ để bắt đầu'}
             </Badge>
           </div>
         </div>

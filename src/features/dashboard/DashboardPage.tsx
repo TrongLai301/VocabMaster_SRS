@@ -21,11 +21,15 @@ import {
   Trophy,
   Zap,
   HelpCircle,
+  Headphones,
   BarChart3
 } from 'lucide-react';
 
+import { calculateStreak } from '@/services/api/analyticsService';
+
 export const DashboardPage: React.FC = () => {
   const { user, profile, isConfigured } = useAuth();
+  const [streakCount, setStreakCount] = useState(() => profile?.current_streak || 0);
   const [srsStats, setSrsStats] = useState<MemoryStageStats>({
     box1: 0,
     box2: 0,
@@ -36,6 +40,12 @@ export const DashboardPage: React.FC = () => {
     totalDue: 0,
   });
   const [heatmapData, setHeatmapData] = useState<DailyActivityMap>({});
+
+  useEffect(() => {
+    if (profile?.current_streak !== undefined) {
+      setStreakCount(profile.current_streak);
+    }
+  }, [profile?.current_streak]);
 
   useEffect(() => {
     fetchMemoryStageStats().then((data) => {
@@ -49,6 +59,21 @@ export const DashboardPage: React.FC = () => {
     }).catch((err) => {
       console.warn('[DashboardPage] Error loading Heatmap:', err);
     });
+
+    calculateStreak().then((info) => {
+      setStreakCount(info.currentStreak);
+    }).catch(() => {});
+
+    const handleStreakUpdate = (e: any) => {
+      if (typeof e.detail?.currentStreak === 'number') {
+        setStreakCount(e.detail.currentStreak);
+      }
+    };
+
+    window.addEventListener('vocab_streak_updated', handleStreakUpdate as EventListener);
+    return () => {
+      window.removeEventListener('vocab_streak_updated', handleStreakUpdate as EventListener);
+    };
   }, []);
 
   return (
@@ -68,7 +93,7 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300">
-            Phase 1 Setup
+            Cấu hình Supabase
           </Badge>
         </div>
       )}
@@ -130,7 +155,7 @@ export const DashboardPage: React.FC = () => {
           <CardContent className="p-6 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chuỗi chuyên cần</span>
-              <p className="text-3xl font-extrabold text-foreground font-mono">{profile?.current_streak || 0} ngày</p>
+              <p className="text-3xl font-extrabold text-foreground font-mono">{streakCount} ngày</p>
               <span className="text-[11px] text-amber-600 font-medium">Duy trì hàng ngày</span>
             </div>
             <div className="h-12 w-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
@@ -173,7 +198,7 @@ export const DashboardPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <BookOpen className="w-5 h-5" />
+                <Layers className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="font-bold text-base">Bộ thẻ từ vựng & Thư mục</h3>
@@ -193,7 +218,7 @@ export const DashboardPage: React.FC = () => {
             <Link to="/sets">
               <Button size="sm" className="gap-1.5">
                 <PlusCircle className="w-4 h-4" />
-                <span>Khám phá bộ thẻ (Phase 2)</span>
+                <span>Khám phá bộ thẻ</span>
               </Button>
             </Link>
           </div>
@@ -225,38 +250,61 @@ export const DashboardPage: React.FC = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link to="/games?mode=quiz" className="block group">
-            <div className="rounded-2xl border p-5 bg-gradient-to-br from-indigo-500/5 via-transparent to-transparent hover:border-indigo-500/40 hover:shadow-md transition-all flex items-center justify-between">
+            <div className="h-full rounded-2xl border p-5 bg-gradient-to-br from-indigo-500/5 via-transparent to-transparent hover:border-indigo-500/40 hover:shadow-md transition-all flex flex-col justify-between">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                     <HelpCircle className="w-4 h-4" />
                   </div>
-                  <h4 className="font-bold text-sm text-foreground group-hover:text-indigo-600 transition-colors">Trắc Nghiệm 4 Phương Án (Speed Quiz)</h4>
+                  <h4 className="font-bold text-sm text-foreground group-hover:text-indigo-600 transition-colors">Trắc Nghiệm 4 Đáp Án</h4>
                 </div>
                 <p className="text-xs text-muted-foreground pl-10">
-                  Chọn 1 trong 4 đáp án đúng, tích lũy chuỗi combo điểm số kèm phát âm tự động và giải thích chi tiết.
+                  Chọn 1 trong 4 đáp án đúng, chuỗi combo điểm thưởng kèm phát âm tự động.
                 </p>
               </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-indigo-600 group-hover:translate-x-1 transition-all shrink-0 ml-3" />
+              <div className="flex justify-end pt-3">
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+              </div>
             </div>
           </Link>
 
           <Link to="/games?mode=match" className="block group">
-            <div className="rounded-2xl border p-5 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent hover:border-amber-500/40 hover:shadow-md transition-all flex items-center justify-between">
+            <div className="h-full rounded-2xl border p-5 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent hover:border-amber-500/40 hover:shadow-md transition-all flex flex-col justify-between">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                     <Zap className="w-4 h-4" />
                   </div>
-                  <h4 className="font-bold text-sm text-foreground group-hover:text-amber-600 transition-colors">Ghép Từ Nhanh (Speed Match Game)</h4>
+                  <h4 className="font-bold text-sm text-foreground group-hover:text-amber-600 transition-colors">Ghép Từ Nhanh (Match)</h4>
                 </div>
                 <p className="text-xs text-muted-foreground pl-10">
-                  Lưới thẻ phản xạ xáo trộn, đếm giờ mili-giây, shake animation khi ghép sai và lưu kỷ lục cá nhân.
+                  Lưới thẻ phản xạ tính giờ mili-giây, shake animation khi ghép sai và lưu kỷ lục.
                 </p>
               </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-600 group-hover:translate-x-1 transition-all shrink-0 ml-3" />
+              <div className="flex justify-end pt-3">
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-600 group-hover:translate-x-1 transition-all" />
+              </div>
+            </div>
+          </Link>
+
+          <Link to="/games?mode=dictation" className="block group">
+            <div className="h-full rounded-2xl border p-5 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent hover:border-emerald-500/40 hover:shadow-md transition-all flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <Headphones className="w-4 h-4" />
+                  </div>
+                  <h4 className="font-bold text-sm text-foreground group-hover:text-emerald-600 transition-colors">Luyện Gõ & Điền Từ</h4>
+                </div>
+                <p className="text-xs text-muted-foreground pl-10">
+                  Nghe âm đoán từ, nhìn nghĩa điền tiếng Anh, nhìn từ gõ tiếng Việt với 3 chế độ.
+                </p>
+              </div>
+              <div className="flex justify-end pt-3">
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
+              </div>
             </div>
           </Link>
         </div>
