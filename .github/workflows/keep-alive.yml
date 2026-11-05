@@ -2,7 +2,7 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
-    # Chạy vào 00:00 UTC mỗi 2 ngày (7:00 AM giờ VN) để đảm bảo không vượt quá 7 ngày
+    # Chạy vào 00:00 UTC mỗi 2 ngày (7:00 AM giờ VN)
     - cron: '0 0 */2 * *'
   workflow_dispatch: # Cho phép bấm "Run workflow" thủ công trên GitHub Actions để test
 
@@ -12,11 +12,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send keep-alive query
+        env:
+          PROJECT_INPUT: ${{ secrets.SUPABASE_PROJECT_ID }}
+          ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" -X GET \
-            "https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/rest/v1/study_sets?select=id&limit=1" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          # 1. Kiểm tra secret có bị thiếu không
+          if [ -z "$PROJECT_INPUT" ]; then
+            echo "::error::❌ Secret 'SUPABASE_PROJECT_ID' đang bị TRỐNG trong GitHub Settings -> Secrets!"
+            exit 1
+          fi
+
+          if [ -z "$ANON_KEY" ]; then
+            echo "::error::❌ Secret 'SUPABASE_ANON_KEY' đang bị TRỐNG trong GitHub Settings -> Secrets!"
+            exit 1
+          fi
+
+          # 2. Chuẩn hoá Project ID (loại bỏ https:// hoặc .supabase.co nếu lỡ paste cả URL)
+          PROJECT_REF=$(echo "$PROJECT_INPUT" | sed -e 's|^https://||' -e 's|\.supabase\.co.*||' -e 's|/.*||')
+          echo "Targeting project ref: $PROJECT_REF"
+
+          # 3. Gửi query vào Supabase REST API
+          ENDPOINT="https://${PROJECT_REF}.supabase.co/rest/v1/study_sets?select=id&limit=1"
+          
+          HTTP_STATUS=$(curl -sS -o response.json -w "%{http_code}" -X GET "$ENDPOINT" \
+            -H "apikey: ${ANON_KEY}" \
+            -H "Authorization: Bearer ${ANON_KEY}") || CURL_EXIT=$?
+
+          if [ -n "$CURL_EXIT" ] && [ "$CURL_EXIT" -ne 0 ]; then
+            echo "::error::❌ Lệnh curl thất bại với exit code $CURL_EXIT"
+            exit $CURL_EXIT
+          fi
 
           echo "HTTP Status Code: $HTTP_STATUS"
           echo "Response Body: $(cat response.json)"
@@ -24,7 +49,6 @@ jobs:
           if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
             echo "✅ Supabase database keep-alive query successful!"
           else
-            echo "❌ Keep-alive query failed with HTTP $HTTP_STATUS"
+            echo "::error::❌ Keep-alive query failed with HTTP status $HTTP_STATUS"
             exit 1
           fi
-
