@@ -1,0 +1,30 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Chạy vào 00:00 UTC mỗi 2 ngày (7:00 AM giờ VN) để đảm bảo không vượt quá 7 ngày
+    - cron: '0 0 */2 * *'
+  workflow_dispatch: # Cho phép bấm "Run workflow" thủ công trên GitHub Actions để test
+
+jobs:
+  ping:
+    name: Ping Supabase Database
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send keep-alive query
+        run: |
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" -X GET \
+            "https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/rest/v1/study_sets?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+
+          echo "HTTP Status Code: $HTTP_STATUS"
+          echo "Response Body: $(cat response.json)"
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "✅ Supabase database keep-alive query successful!"
+          else
+            echo "❌ Keep-alive query failed with HTTP $HTTP_STATUS"
+            exit 1
+          fi
+
